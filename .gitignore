@@ -1,0 +1,19 @@
+# Lokale SSH-Schlüssel ignorieren
+*.pem
+*.key
+
+# Terraform-Zustandsdateien ignorieren (Wichtig!)
+*.tfstate
+*.tfstate.backup
+
+# Den kompletten automatischen Terraform-Arbeitsordner ignorieren
+.terraform/
+
+# Die Lock-Datei NICHT ignorieren (.terraform.lock.hcl) 
+# Die darf im Git bleiben, damit dein Team die exakt gleichen Provider-Versionen nutzt.
+
+# Falls du mit Variablen-Dateien arbeitest, die Geheimnisse enthalten:
+*.tfvars
+*.tfvars.json
+
+*.ignore/*
