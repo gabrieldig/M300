@@ -17,3 +17,9 @@
 *.tfvars.json
 
 *.ignore/*
+
+
+# Ansible keys
+ansible/keys/
+*.pem
+*.ppk

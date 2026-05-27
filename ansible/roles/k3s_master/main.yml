@@ -1,0 +1,55 @@
+---
+# ==========================================
+# K3s Master Installation
+# ==========================================
+
+- name: Systemupdates durchführen
+  apt:
+    update_cache: yes
+    upgrade: dist
+
+- name: K3s auf Master installieren
+  shell: |
+    curl -sfL https://get.k3s.io | sh -s - server \
+      --cluster-init \
+      --disable traefik
+  args:
+    creates: /usr/local/bin/k3s
+
+- name: Warten bis K3s API erreichbar ist
+  wait_for:
+    port: 6443
+    delay: 10
+    timeout: 120
+
+- name: K3s Node Token auslesen
+  slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: k3s_token_raw
+
+- name: Token als Fact speichern
+  set_fact:
+    k3s_node_token: "{{ k3s_token_raw.content | b64decode | trim }}"
+
+- name: Token für Worker zugänglich machen (dummy file)
+  copy:
+    content: "{{ k3s_node_token }}"
+    dest: /tmp/k3s_token
+    mode: '0644'
+
+- name: Kubeconfig für ansible-User kopieren
+  copy:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: /home/ansible/.kube/config
+    owner: ansible
+    group: ansible
+    mode: '0600'
+    remote_src: yes
+
+- name: .kube Verzeichnis erstellen
+  file:
+    path: /home/ansible/.kube
+    state: directory
+    owner: ansible
+    group: ansible
+    mode: '0700'

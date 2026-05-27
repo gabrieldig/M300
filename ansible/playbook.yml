@@ -1,0 +1,17 @@
+---
+# ==========================================
+# K3s Installation Playbook
+# Aufruf: ansible-playbook -i inventory.ini playbook.yml
+# ==========================================
+
+- name: K3s Master installieren
+  hosts: k3s_master
+  become: true
+  roles:
+    - k3s_master
+
+- name: K3s Worker Nodes joinen
+  hosts: k3s_workers
+  become: true
+  roles:
+    - k3s_worker

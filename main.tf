@@ -215,13 +215,14 @@ resource "aws_instance" "k3s_master" {
 
 # K3s Worker Node
 resource "aws_instance" "k3s_worker" {
+  count                  = 2
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = "t3.small"
   subnet_id              = aws_subnet.private_compute_sub.id
   vpc_security_group_ids = [aws_security_group.k3s_sg.id]
   key_name               = var.key_name
 
-  tags = { Name = "k3s-worker" }
+  tags = { Name = "k3s-worker-${count.index + 1}" }
 }
 
 # Backup-Management Instanz
@@ -269,9 +270,9 @@ output "k3s_master_private_ip" {
   value       = aws_instance.k3s_master.private_ip
 }
 
-output "k3s_worker_private_ip" {
-  description = "Private IP des K3s Workers"
-  value       = aws_instance.k3s_worker.private_ip
+output "k3s_worker_private_ips" {
+  description = "Private IPs der K3s Worker Nodes"
+  value       = aws_instance.k3s_worker[*].private_ip # Das [*] gibt alle IPs als Liste aus
 }
 
 output "backup_manager_private_ip" {
