@@ -16,7 +16,7 @@
 *.tfvars
 *.tfvars.json
 
-*.ignore/*
+*.ignore
 
 
 # Ansible keys
