@@ -26,3 +26,7 @@ output "ssh_command" {
   description = "SSH Befehl zum Ansible Controller"
   value       = "ssh -i ~/.ssh/m300.pem ubuntu@${aws_instance.ansible_controller.public_ip}"
 }
+output "ansible_command" {
+  description = "Ansible Befehl zum Starten"
+  value       = "ansible-playbook -i /home/ansible/M300/ansible/inventory.ini /home/ansible/M300/ansible/playbook.yml"
+}

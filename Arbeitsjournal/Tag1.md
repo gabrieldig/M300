@@ -17,4 +17,5 @@ Dazu habe ich die AWS CLI installiert und konfiguriert, damit Terraform auf mein
 
 - Weiterhin mein Terraform Script zu verbessern, damit ich am Ende eine funktionierende Infrastruktur habe, die ich dann auch in der Praxis verwenden kann.
 - Mich besser mit Terraform und AWS CLI auseinandersetzten. 
-- 
+  
+> Nächster Tag -> [Tag 2](./Tag2.md)
