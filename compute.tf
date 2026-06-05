@@ -76,6 +76,8 @@ resource "aws_instance" "k3s_master" {
   key_name               = var.key_name
   user_data              = local.ansible_user_data
 
+  iam_instance_profile   = "LabInstanceProfile"
+  
   tags = { Name = "k3s-master" }
 }
 
@@ -100,6 +102,8 @@ resource "aws_instance" "backup_manager" {
   vpc_security_group_ids = [aws_security_group.backup_sg.id]
   key_name               = var.key_name
   user_data              = local.ansible_user_data
+
+  iam_instance_profile   = "LabInstanceProfile"
 
   tags = { Name = "backup-manager" }
 }

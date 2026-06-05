@@ -9,6 +9,9 @@
 # Den kompletten automatischen Terraform-Arbeitsordner ignorieren
 .terraform/
 
+# Lockfile
+.terraform.lock.hcl
+
 # Die Lock-Datei NICHT ignorieren (.terraform.lock.hcl) 
 # Die darf im Git bleiben, damit dein Team die exakt gleichen Provider-Versionen nutzt.
 
@@ -23,3 +26,6 @@
 ansible/keys/
 *.pem
 *.ppk
+
+# Helper-Dateien
+foragent.md
