@@ -38,7 +38,7 @@
       copy:
         content: "{{ k3s_node_token }}"
         dest: /tmp/k3s_token
-        mode: '0600'       # ✅ restriktiver als vorher
+        mode: '0600'
 
     - name: .kube Verzeichnis erstellen
       file:
@@ -57,7 +57,7 @@
         mode: '0600'
         remote_src: yes
 
-    - name: Kubeconfig Server-IP korrigieren   # ✅ neu
+    - name: Kubeconfig Server-IP korrigieren
       replace:
         path: /home/ansible/.kube/config
         regexp: 'https://127\.0\.0\.1:6443'
@@ -77,7 +77,7 @@
 
     - name: Master IP aus Inventory lesen
       set_fact:
-        k3s_master_ip: "{{ hostvars[groups['k3s_master'][0]]['ansible_host'] }}"  # ✅ Fix
+        k3s_master_ip: "{{ hostvars[groups['k3s_master'][0]]['ansible_host'] }}"
 
     - name: K3s Token vom Master holen
       slurp:
@@ -96,20 +96,20 @@
       args:
         creates: /usr/local/bin/k3s
 
-    - name: Warten bis Worker k3s-Agent läuft   # ✅ Fix
+    - name: Warten bis Worker k3s-Agent läuft
       wait_for:
         port: 10250
         delay: 5
         timeout: 60
 
-    - name: Token-Datei vom Master löschen       # ✅ neu
+    - name: Token-Datei vom Master löschen
       file:
         path: /tmp/k3s_token
         state: absent
       delegate_to: "{{ k3s_master_ip }}"
 
 # ==========================================
-# 3. PLAY: Helm & Monitoring (Prometheus/Grafana) einrichten
+# 3. PLAY: Helm & Monitoring (Prometheus/Grafana)
 # ==========================================
 - name: Helm & Monitoring auf Master installieren
   hosts: k3s_master
@@ -117,23 +117,25 @@
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   tasks:
-    - name: Install Helm
+    - name: Helm installieren
       shell: |
         curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
       args:
         creates: /usr/local/bin/helm
 
-    - name: Add Prometheus Helm repo
+    - name: Prometheus Helm repo hinzufügen
       shell: |
-        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+        helm repo add prometheus-community \
+          https://prometheus-community.github.io/helm-charts || true
         helm repo update
 
-    - name: Create monitoring namespace
+    - name: Monitoring Namespace erstellen
       shell: kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
 
-    - name: Deploy kube-prometheus-stack
+    - name: kube-prometheus-stack deployen
       shell: |
-        helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+        helm upgrade --install kube-prometheus-stack \
+          prometheus-community/kube-prometheus-stack \
           --namespace monitoring \
           --set grafana.service.type=NodePort \
           --set grafana.service.nodePort=30080 \
@@ -141,3 +143,46 @@
           --set prometheus.service.type=NodePort \
           --set prometheus.service.nodePort=30090 \
           --set alertmanager.enabled=false
+
+# ==========================================
+# 4. PLAY: Headlamp Dashboard
+# ==========================================
+- name: Headlamp Dashboard installieren
+  hosts: k3s_master
+  become: yes
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  tasks:
+    - name: Headlamp Helm repo hinzufügen
+      shell: |
+        helm repo add headlamp https://headlamp-k8s.github.io/headlamp/ || true
+        helm repo update
+
+    - name: Headlamp deployen
+      shell: |
+        helm upgrade --install headlamp headlamp/headlamp \
+          --namespace monitoring \
+          --set service.type=NodePort \
+          --set service.nodePort=30100
+
+    - name: Headlamp ServiceAccount erstellen
+      shell: |
+        kubectl create serviceaccount headlamp-admin \
+          -n monitoring --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: ClusterRoleBinding für Headlamp erstellen
+      shell: |
+        kubectl create clusterrolebinding headlamp-admin \
+          --clusterrole=cluster-admin \
+          --serviceaccount=monitoring:headlamp-admin \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Login-Token generieren
+      shell: |
+        kubectl create token headlamp-admin \
+          -n monitoring --duration=8760h
+      register: headlamp_token
+
+    - name: Token anzeigen
+      debug:
+        msg: "Headlamp Login Token: {{ headlamp_token.stdout }}"
