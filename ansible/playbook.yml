@@ -34,11 +34,11 @@
       set_fact:
         k3s_node_token: "{{ k3s_token_raw.content | b64decode | trim }}"
 
-    - name: Token für Worker zugänglich machen (dummy file)
+    - name: Token für Worker zugänglich machen
       copy:
         content: "{{ k3s_node_token }}"
         dest: /tmp/k3s_token
-        mode: '0644'
+        mode: '0600'       # ✅ restriktiver als vorher
 
     - name: .kube Verzeichnis erstellen
       file:
@@ -57,6 +57,12 @@
         mode: '0600'
         remote_src: yes
 
+    - name: Kubeconfig Server-IP korrigieren   # ✅ neu
+      replace:
+        path: /home/ansible/.kube/config
+        regexp: 'https://127\.0\.0\.1:6443'
+        replace: "https://{{ ansible_host }}:6443"
+
 # ==========================================
 # 2. PLAY: K3s Worker Nodes joinen
 # ==========================================
@@ -71,8 +77,7 @@
 
     - name: Master IP aus Inventory lesen
       set_fact:
-        # HINWEIS: Falls deine Gruppe im Inventory "master" heißt, hier 'master' eintragen!
-        k3s_master_ip: "{{ groups['k3s_master'][0] }}"
+        k3s_master_ip: "{{ hostvars[groups['k3s_master'][0]]['ansible_host'] }}"  # ✅ Fix
 
     - name: K3s Token vom Master holen
       slurp:
@@ -91,6 +96,48 @@
       args:
         creates: /usr/local/bin/k3s
 
-    - name: Warten bis Worker bereit ist
-      pause:
-        seconds: 20
+    - name: Warten bis Worker k3s-Agent läuft   # ✅ Fix
+      wait_for:
+        port: 10250
+        delay: 5
+        timeout: 60
+
+    - name: Token-Datei vom Master löschen       # ✅ neu
+      file:
+        path: /tmp/k3s_token
+        state: absent
+      delegate_to: "{{ k3s_master_ip }}"
+
+# ==========================================
+# 3. PLAY: Helm & Monitoring (Prometheus/Grafana) einrichten
+# ==========================================
+- name: Helm & Monitoring auf Master installieren
+  hosts: k3s_master
+  become: yes
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  tasks:
+    - name: Install Helm
+      shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: Add Prometheus Helm repo
+      shell: |
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+        helm repo update
+
+    - name: Create monitoring namespace
+      shell: kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Deploy kube-prometheus-stack
+      shell: |
+        helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+          --namespace monitoring \
+          --set grafana.service.type=NodePort \
+          --set grafana.service.nodePort=30080 \
+          --set grafana.adminPassword=admin123 \
+          --set prometheus.service.type=NodePort \
+          --set prometheus.service.nodePort=30090 \
+          --set alertmanager.enabled=false

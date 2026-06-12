@@ -21,6 +21,21 @@ resource "aws_security_group" "ansible_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  ingress {
+  description = "Grafana NodePort"
+  from_port   = 30080
+  to_port     = 30080
+  protocol    = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]  # oder deine IP: ["x.x.x.x/32"]
+}
+
+ingress {
+  description = "Prometheus NodePort"
+  from_port   = 30090
+  to_port     = 30090
+  protocol    = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+}
 
   tags = { Name = "ansible-controller-sg" }
 }

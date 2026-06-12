@@ -1,0 +1,31 @@
+---
+- name: Install Helm
+  shell: |
+    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  args:
+    creates: /usr/local/bin/helm
+
+- name: Add Prometheus Helm repo
+  shell: |
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    helm repo update
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Create monitoring namespace
+  shell: kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Deploy kube-prometheus-stack
+  shell: |
+    helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+      --namespace monitoring \
+      --set grafana.service.type=NodePort \
+      --set grafana.service.nodePort=30080 \
+      --set grafana.adminPassword=admin123 \
+      --set prometheus.service.type=NodePort \
+      --set prometheus.service.nodePort=30090 \
+      --set alertmanager.enabled=false
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
