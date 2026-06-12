@@ -77,7 +77,7 @@
 
     - name: Master IP aus Inventory lesen
       set_fact:
-        k3s_master_ip: "{{ hostvars[groups['k3s_master'][0]]['ansible_host'] }}"
+        k3s_master_ip: "{{ groups['k3s_master'][0] }}"
 
     - name: K3s Token vom Master holen
       slurp:
