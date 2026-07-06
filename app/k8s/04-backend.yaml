@@ -17,7 +17,7 @@ spec:
         - name: backend
           # Ersetzen durch dein eigenes Registry-Image, z.B.
           # ghcr.io/<dein-user>/m300-task-backend:latest
-          image: CHANGE_ME/m300-task-backend:latest
+          image: Cghcr.io/gabrieldig/m300-task-backend:latest
           ports:
             - containerPort: 8000
           env:

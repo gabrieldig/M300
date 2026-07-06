@@ -132,7 +132,7 @@ resource "aws_security_group" "ansible_sg" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  
+
   ingress {
     description = "Task Manager Frontend NodePort"
     from_port   = 30200
@@ -180,6 +180,20 @@ resource "aws_security_group" "k3s_sg" {
     to_port     = 8472
     protocol    = "udp"
     cidr_blocks = ["10.0.0.0/16"]
+  }
+y
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    description = "K3s NodePorts (Grafana, Prometheus, Headlamp, Task-App)"
+    from_port   = 30000
+    to_port     = 32767
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/16"] # Erlaubt Traffic aus dem gesamten internen VPC
   }
 
   egress {
