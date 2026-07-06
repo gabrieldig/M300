@@ -181,7 +181,7 @@ resource "aws_security_group" "k3s_sg" {
     protocol    = "udp"
     cidr_blocks = ["10.0.0.0/16"]
   }
-y
+
   egress {
     from_port   = 0
     to_port     = 0

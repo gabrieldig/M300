@@ -7,5 +7,6 @@ Und zum ersten mal ist mein ganzes Ansible Playbook ohne Fehler durchgelaufen, w
 
 Hier sind Screenshots der laufenden Seiten:
 ![alt text](image-7.png)
-![alt text](image-8.png)
 ![alt text](image-9.png)
+![Headlamp](image-10.png)
+![alt text](image-11.png)
