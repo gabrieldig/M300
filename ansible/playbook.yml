@@ -186,3 +186,32 @@
     - name: Token anzeigen
       debug:
         msg: "Headlamp Login Token: {{ headlamp_token.stdout }}"
+
+# ==========================================
+# 5. PLAY: Task Manager App deployen
+# ==========================================
+- name: Task Manager App auf K3s deployen
+  hosts: k3s_master
+  become: yes
+  tasks:
+    - name: App-Verzeichnis (k8s Manifeste) auf den Master kopieren
+      ansible.builtin.copy:
+        src: /home/ansible/M300/app/k8s/ # Passe den Pfad zu deinen YAML-Dateien an
+        dest: /tmp/taskapp-k8s/
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Kubernetes Manifeste anwenden
+      ansible.builtin.command: k3s kubectl apply -f /tmp/taskapp-k8s/
+      register: deploy_result
+      changed_when: "'created' in deploy_result.stdout or 'configured' in deploy_result.stdout"
+
+    - name: Status der Task Manager Pods anzeigen
+      ansible.builtin.command: k3s kubectl get pods -n taskapp
+      register: pods_status
+      changed_when: false
+
+    - name: Pod Status ausgeben
+      ansible.builtin.debug:
+        var: pods_status.stdout_lines
