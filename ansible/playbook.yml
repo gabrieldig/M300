@@ -215,3 +215,56 @@
     - name: Pod Status ausgeben
       ansible.builtin.debug:
         var: pods_status.stdout_lines
+
+# ==========================================
+# PLAY: NGINX REVERSE PROXY AUF CONTROLLER
+# ==========================================
+- name: Nginx Reverse Proxy auf dem Ansible Controller einrichten
+  hosts: localhost          # Wir konfigurieren den Controller selbst
+  connection: local         # Kein SSH nötig, da wir direkt auf der Maschine sind
+  become: yes               # Root-Rechte für apt und /etc/nginx/ nötig
+  vars:
+    # Holt automatisch die IP des K3s Masters aus deiner inventory.ini
+    # (Passt für Gruppenamen wie [k3s_master] oder [master])
+    target_master_ip: "{{ hostvars[groups['k3s_master'][0]]['ansible_host'] | default(groups['k3s_master'][0]) }}"
+
+  tasks:
+    - name: Nginx installieren
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+        update_cache: yes
+
+    - name: Nginx Reverse-Proxy-Konfiguration aus Jinja2-Template erstellen
+      ansible.builtin.template:
+        src: templates/k3s-proxy.conf.j2
+        dest: /etc/nginx/sites-available/k3s-proxy.conf
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Nginx neu laden
+
+    - name: Konfiguration aktivieren (Symlink nach sites-enabled setzen)
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/k3s-proxy.conf
+        dest: /etc/nginx/sites-enabled/k3s-proxy.conf
+        state: link
+      notify: Nginx neu laden
+
+    - name: Standard-Nginx-Seite deaktivieren (verhindert Port-Konflikte)
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: Nginx neu laden
+
+    - name: Sicherstellen, dass Nginx läuft und beim Booten startet
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: Nginx neu laden
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
