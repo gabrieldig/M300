@@ -155,8 +155,12 @@
   tasks:
     - name: Headlamp Helm repo hinzufügen
       shell: |
-        helm repo add headlamp https://headlamp-k8s.github.io/headlamp/ || true
+        helm repo add headlamp https://headlamp-k8s.github.io/headlamp/ --force-update
         helm repo update
+      register: repo_add
+      until: repo_add.rc == 0
+      retries: 3
+      delay: 5
 
     - name: Headlamp deployen
       shell: |
