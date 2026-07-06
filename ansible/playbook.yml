@@ -155,7 +155,7 @@
   tasks:
     - name: Headlamp Helm repo hinzufügen
       shell: |
-        helm repo add headlamp https://headlamp-k8s.github.io/headlamp/ --force-update
+        helm repo add headlamp https://kubernetes-sigs.github.io/headlamp/
         helm repo update
       register: repo_add
       until: repo_add.rc == 0
@@ -164,7 +164,7 @@
 
     - name: Headlamp deployen
       shell: |
-        helm upgrade --install headlamp headlamp/headlamp \
+       helm install my-headlamp headlamp/headlamp \
           --namespace monitoring \
           --set service.type=NodePort \
           --set service.nodePort=30100
