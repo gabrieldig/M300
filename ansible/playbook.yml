@@ -132,11 +132,20 @@
     - name: Monitoring Namespace erstellen
       shell: kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
 
+     - name: Values-Datei für Monitoring auf Master kopieren
+      ansible.builtin.template:
+        src: templates/monitoring-values.yaml.j2
+        dest: /tmp/monitoring-values.yaml
+        owner: root
+        group: root
+        mode: '0644'
+
     - name: kube-prometheus-stack deployen
       shell: |
         helm upgrade --install kube-prometheus-stack \
           prometheus-community/kube-prometheus-stack \
           --namespace monitoring \
+          -f /tmp/monitoring-values.yaml
           --set grafana.service.type=NodePort \
           --set grafana.service.nodePort=30080 \
           --set grafana.adminPassword=admin123 \
