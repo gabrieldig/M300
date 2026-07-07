@@ -81,6 +81,8 @@ resource "aws_instance" "ansible_controller" {
     ${tls_private_key.ansible_key.private_key_pem}
     PRIVATEKEY
 
+    echo 'export ANSIBLE_CONFIG=/home/ansible/M300/ansible/ansible.cfg' >> /home/ansible/.bashrc
+
     chmod 600 /home/ansible/.ssh/ansible_key.pem
     chown -R ansible:ansible /home/ansible/.ssh
     echo "ansible ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ansible
