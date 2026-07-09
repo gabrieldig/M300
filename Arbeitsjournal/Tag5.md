@@ -25,3 +25,5 @@ Nach dem Ersten versuch hat es schon besser ausgesehen. Jedoch noch nicht Perfek
 
 ![alt text](image-5.png)
 
+> Vorheriger Tag -> [Tag 4](./Tag4.md)
+> Nächster Tag -> [Tag 6](./Tag6.md)

@@ -10,3 +10,6 @@ Hier sind Screenshots der laufenden Seiten:
 ![alt text](image-9.png)
 ![Headlamp](image-10.png)
 ![alt text](image-11.png)
+
+> Vorheriger Tag -> [Tag 5](./Tag5.md)
+> Nächster Tag -> [Tag 7](./Tag7.md)

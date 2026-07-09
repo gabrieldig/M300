@@ -8,3 +8,5 @@ Das führt dazu, das ich nicht mehr im gleichen Verzeichnis bin, wie das ansible
 (Zumindest denke ich es)
 
 
+> Vorheriger Tag -> [Tag 6](./Tag6.md)
+> Nächster Tag -> [Tag 8](./Tag8.md)
