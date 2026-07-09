@@ -1,54 +1,60 @@
-# Modul 300 Plattformübergreifende Dienste in ein Netzwerk integrieren
+# Modul 300 – Plattformübergreifende Dienste in ein Netzwerk integrieren
 
-## Projektplan
-
+Automatisierter Aufbau einer AWS-Cloud-Infrastruktur mit Terraform (Provisionierung)
+und Ansible (Konfiguration): ein K3s-Kubernetes-Cluster hinter einem Bastion Host,
+mit Monitoring-Stack und einer selbst entwickelten 3-Schicht-Applikation (Task Manager).
 
 ## Architektur-Übersicht
 
-| Komponente |Technologie |Beschreibung / Rolle im Projekt |
-| :---        | :---        | :---                         |
-| **Infrastruktur** | AWS (EC2, VPC, S3) | Cloud-Plattform für die Bereitstellung der virtuellen Server und des Netzwerks. |
-| **Provisionierung** | Terraform | Infrastructure as Code (IaC). Definiert und baut das VPC, die Subnetze, Sicherheitsgruppen und EC2-Instanzen vollautomatisch. |
-| **Konfiguration** | Ansible | Agentenlose Konfigurations-Automatisierung. Installiert und konfiguriert K3s, Docker und Absicherungen auf den Nodes. |
-| **Container-Orchestrierung** | K3s (Kubernetes) | Eine hochgradig optimierte, leichtgewichtige Kubernetes-Distribution. Perfekt für ressourcenschonende Umgebungen. |
-| **Lokaler Paket-Spiegel** | `debmirror` (Docker) | Ein "Run-and-Die"-Container, der eine ultra-schlanke, lokale Kopie von Ubuntu-Sicherheitsupdates vorhält (ohne GUIs/Spiele). |
-| **Datensicherung** | AWS S3 | Externer, hochverfügbarer Objektspeicher für die automatisierten K3s- und Anwendungs-Backups. |
+KomponenteTechnologieBeschreibung / Rolle im ProjektInfrastrukturAWS (EC2, VPC, S3)Cloud-Plattform für die Bereitstellung der virtuellen Server und des Netzwerks.ProvisionierungTerraformInfrastructure as Code (IaC). Definiert und baut VPC, Subnetze, Sicherheitsgruppen und EC2-Instanzen vollautomatisch.KonfigurationAnsibleAgentenlose Konfigurations-Automatisierung. Installiert K3s auf allen Nodes, deployt den Monitoring-Stack und die Applikation.Container-OrchestrierungK3s (Kubernetes)Leichtgewichtige Kubernetes-Distribution für ressourcenschonende Umgebungen.ApplikationTask Manager (FastAPI + Nginx/Vanilla JS + PostgreSQL)Eigene 3-Schicht-Demo-App, läuft als Deployment auf dem K3s-Cluster.Monitoringkube-prometheus-stack, Headlamp (Helm)Cluster- und Node-Metriken via Grafana/Prometheus, Kubernetes-Dashboard via Headlamp.Öffentlicher ZugriffNginx Reverse Proxy (auf dem Bastion Host)Leitet Grafana, Prometheus, Headlamp und die Task-App vom Bastion Host auf die privaten NodePorts im Cluster weiter.DatensicherungAWS S3 + EBSBucket und dedizierte Backup-Manager-Instanz sind provisioniert; die eigentliche Backup-Automatisierung ist noch offen (siehe unten).
 
 ## Komponenten-Beschreibung
 
-### 1. Management Node
-Der Managementserver nimmt übernimmt die Managementrolle und dient als zentrale Steueranlage:
-* **Bastion Host:** Er ist die einzige Instanz mit einer öffentlichen IP-Adresse und fungiert als sicheres Gateway zum K3s-Cluster, da sie in einem Isolierten Netzt liegen, ohne Öffentlichen Zugang.
-* **Ansible Controller:** Von hier aus werden die Ansible-Playbooks gestartet.
-
-### 2. K3s Cluster
-* **1x K3s Master (Control Plane):** Verwaltet den Cluster-Zustand, steuert die Pods und stellt die Kubernetes-API bereit.
-* **2x K3s Worker:** Hier laufen die eigentlichen containerisierten Anwendungen (Pods). Sie erhalten ihre Befehle und Netzwerk-Routing direkt vom Master.
-  
-#### 3. Backup-Strategie via AWS S3
-Die Datensicherheit wird komplett von den Compute-Ressourcen entkoppelt:
-* K3s triggert automatisierte Snapshots des Cluster-Zustands.
-* Diese Backups werden verschlüsselt direkt in einen **AWS S3 Bucket** geladen.
-* **Vorteil (Disaster Recovery):** Sollte das gesamte Cluster irreparabel beschädigt werden, kann die Infrastruktur mittels Terraform und Ansible innerhalb von Minuten neu aufgebaut und der Zustand aus dem S3-Bucket fehlerfrei wiederhergestellt werden.
+1. Management Node (Bastion Host)
 
 
+Bastion Host: einzige Instanz mit öffentlicher IP, Gateway zum restlichen (privaten) Netzwerk.
+Ansible Controller: von hier aus wird das Playbook ausgeführt.
+Nginx Reverse Proxy: läuft direkt auf dem Bastion Host und leitet die Ports 30080 (Grafana), 30090 (Prometheus), 30100 (Headlamp) und 30200 (Task Manager) auf den privaten K3s-Master weiter. Dadurch braucht nur der Bastion Host eine öffentliche IP – der Cluster selbst bleibt komplett isoliert.
 
-## Kurzanleitung
-Im Verzeichnis starten man das Projekt mit ``Terrafor plan`` und ``Terraform apply`` um die Infrastruktur aufzubauen.
 
-Dannach sieht man ein output:
-![alt text](image.png)
+2. K3s Cluster
 
-Im Output sieht man alles das man braucht, um sich mt dem Cluster zu verbinden:
-- Öffentliche IP Addresse der Bastion Host
-- Private IP Adressen der Master und Worker Nodes
-- SSH Command um direkt auf die Master Node zuzugreifen.
 
-Dannach muss man in den Ansible User wechseln mit ``sudo su ansible`` und von dort ins Homeverzeichnis gehen: ``cd ~``
+- 1x K3s Master (Control Plane): verwaltet den Cluster-Zustand, stellt die Kubernetes-API bereit.
+- 2x K3s Worker: hier laufen die Pods der Applikation.
 
-Dort findet man das Github Repository und darin befindet sich der Ansible Ordner mit allen nötigen Scripts.
 
-Mit ``ansible-playbook -i /home/ansible/M300/ansible/inventory.ini /home/ansible/M300/ansible/playbook.yml`` kann man das Playbook ausführen, um die K3s-Cluster zu konfigurieren.
+3. Task Manager Applikation
+
+Eigene 3-Schicht-App im Namespace taskapp, deployt via Kubernetes-Manifeste:
+
+
+Frontend: statisches Vanilla-JS/HTML, ausgeliefert über Nginx, exponiert via NodePort 30200.
+Backend: FastAPI mit CRUD-Endpoints (/api/tasks) und Health-Check (/api/health).
+Datenbank: PostgreSQL mit persistentem Volume (PVC), überlebt Pod-Neustarts.
+
+
+4. Monitoring
+
+Via Helm auf dem K3s-Master installiert:
+
+
+kube-prometheus-stack: Grafana (NodePort 30080) und Prometheus (NodePort 30090) für Cluster- und Node-Metriken.
+Headlamp: Kubernetes-Dashboard (NodePort 30100) mit eigenem ServiceAccount und Login-Token.
+
+
+5. Backup-Infrastruktur (provisioniert, Automatisierung offen)
+
+Terraform legt bereits Folgendes an:
+
+
+Eine dedizierte Backup-Manager-Instanz in einem eigenen privaten Subnetz.
+Ein persistentes EBS-Volume, das terraform destroy übersteht (skip_destroy = true).
+Ein S3-Bucket mit Versionierung für externe Backups.
+
+
+Offen: Es gibt aktuell noch kein Ansible-Task/Cronjob, der tatsächlich Daten (z.B. K3s-State oder die Postgres-DB) auf den Backup-Manager bzw. nach S3 sichert. Die Infrastruktur dafür steht, die Automatisierung selbst ist ein möglicher nächster Schritt.
 
 
 ```mermaid
